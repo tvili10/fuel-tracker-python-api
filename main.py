@@ -88,3 +88,11 @@ if __name__ == "__main__":
 
     # 0.0.0.0: reachable from other devices on your LAN (e.g. phone on same Wi‑Fi).
     uvicorn.run(app, host="0.0.0.0", port=8000)
+    TIME_BETWEEN_PINGS_TO_BACKEND_SERVICE = 60
+    while True:
+        response = requests.get("https://fuel-tracker-cv7o.onrender.com/ping")
+        if response.status_code == 200:
+            print("Ping to backend service successful")
+        else:
+            print("Ping to backend service failed")
+        time.sleep(TIME_BETWEEN_PINGS_TO_BACKEND_SERVICE)
