@@ -1,8 +1,14 @@
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+_ROOT = Path(__file__).resolve().parent
+load_dotenv(_ROOT / ".env")
+
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
+from ai_parse import parse_receipt_ocr
 from text_extract import extract_text_from_bytes, extract_text_from_path
 
 app = FastAPI(title="Fuel Tracker API")
@@ -58,8 +64,22 @@ async def extract_entry_data(image: UploadFile = File(...)):
     text = extract_text_from_bytes(data)
     if text.startswith("Error:"):
         raise HTTPException(status_code=422, detail=text)
-    print(text)
-    return {"text": text, "source": image.filename}
+
+    try:
+        parsed = parse_receipt_ocr(text)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e)) from e
+
+    return {
+        "parsed": {
+            "cost": parsed.get("cost"),
+            "fuel_quantity": parsed.get("fuel_quantity"),
+            "cost_currency": parsed.get("cost_currency"),
+            "fuel_unit": parsed.get("fuel_unit"),
+        },
+    }
 
 
 
