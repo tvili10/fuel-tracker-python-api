@@ -1,5 +1,11 @@
 from pathlib import Path
 
+import logging
+import os
+import threading
+import time
+
+import requests
 from dotenv import load_dotenv
 
 _ROOT = Path(__file__).resolve().parent
@@ -10,6 +16,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from ai_parse import parse_receipt_ocr
 from text_extract import extract_text_from_bytes, extract_text_from_path
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Fuel Tracker API")
 
@@ -22,6 +34,38 @@ app.add_middleware(
 )
 
 FIXED_IMAGE = Path(__file__).resolve().parent / "assets" / "fourth.png"
+TIME_BETWEEN_PINGS_TO_BACKEND_SERVICE = 60
+
+
+def ping_backend_service_forever():
+    backend_url = os.environ.get("BACKEND_SERVICE_URL")
+    if not backend_url:
+        logger.warning("BACKEND_SERVICE_URL is not set; skipping backend ping loop.")
+        return
+
+    ping_url = f"{backend_url}/ping"
+    logger.info("Starting backend ping loop: %s", ping_url)
+
+    while True:
+        try:
+            response = requests.get(ping_url, timeout=10)
+            if response.status_code == 200:
+                logger.info("Ping to backend service successful")
+            else:
+                logger.warning(
+                    "Ping to backend service failed (status=%s)",
+                    response.status_code,
+                )
+        except requests.RequestException as exc:
+            logger.warning("Ping to backend service unreachable: %s", exc)
+        time.sleep(TIME_BETWEEN_PINGS_TO_BACKEND_SERVICE)
+
+
+@app.on_event("startup")
+def start_ping_thread():
+    thread = threading.Thread(target=ping_backend_service_forever, daemon=True)
+    thread.start()
+    logger.info("Background backend ping thread started.")
 
 
 @app.get("/")
@@ -86,13 +130,4 @@ async def extract_entry_data(image: UploadFile = File(...)):
 if __name__ == "__main__":
     import uvicorn
 
-    # 0.0.0.0: reachable from other devices on your LAN (e.g. phone on same Wi‑Fi).
     uvicorn.run(app, host="0.0.0.0", port=8000)
-    TIME_BETWEEN_PINGS_TO_BACKEND_SERVICE = 60
-    while True:
-        response = requests.get("https://fuel-tracker-cv7o.onrender.com/ping")
-        if response.status_code == 200:
-            print("Ping to backend service successful")
-        else:
-            print("Ping to backend service failed")
-        time.sleep(TIME_BETWEEN_PINGS_TO_BACKEND_SERVICE)
