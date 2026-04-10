@@ -41,6 +41,7 @@ def read_root():
 
 @app.get("/health")
 def health():
+    print("Health check")
     return {"status": "ok"}
 
 
