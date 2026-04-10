@@ -33,40 +33,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-FIXED_IMAGE = Path(__file__).resolve().parent / "assets" / "fourth.png"
-TIME_BETWEEN_PINGS_TO_BACKEND_SERVICE = 60
-
-
-def ping_backend_service_forever():
-    backend_url = os.environ.get("BACKEND_SERVICE_URL")
-    if not backend_url:
-        logger.warning("BACKEND_SERVICE_URL is not set; skipping backend ping loop.")
-        return
-
-    ping_url = f"{backend_url}/ping"
-    logger.info("Starting backend ping loop: %s", ping_url)
-
-    while True:
-        try:
-            response = requests.get(ping_url, timeout=10)
-            if response.status_code == 200:
-                logger.info("Ping to backend service successful")
-            else:
-                logger.warning(
-                    "Ping to backend service failed (status=%s)",
-                    response.status_code,
-                )
-        except requests.RequestException as exc:
-            logger.warning("Ping to backend service unreachable: %s", exc)
-        time.sleep(TIME_BETWEEN_PINGS_TO_BACKEND_SERVICE)
-
-
-@app.on_event("startup")
-def start_ping_thread():
-    thread = threading.Thread(target=ping_backend_service_forever, daemon=True)
-    thread.start()
-    logger.info("Background backend ping thread started.")
-
 
 @app.get("/")
 def read_root():
@@ -80,17 +46,7 @@ def health():
 
 @app.get("/test/extract-text")
 def extract_text():
-    """OCR for `assets/forth.png` only (fixed path)."""
-    if not FIXED_IMAGE.is_file():
-        raise HTTPException(
-            status_code=404,
-            detail=f"Image not found: {FIXED_IMAGE}",
-        )
-    text = extract_text_from_path(str(FIXED_IMAGE))
-    if text.startswith("Error:"):
-        raise HTTPException(status_code=422, detail=text)
-
-    return {"text": text, "source": FIXED_IMAGE.name}
+    return {"text": "test"}
 
 
 @app.post("/extract-entry-data")
