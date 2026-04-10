@@ -39,20 +39,13 @@ def read_root():
     return {"message": "Fuel Tracker API"}
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health():
     print("Health check")
     return {"status": "ok"}
 
-
-@app.get("/test/extract-text")
-def extract_text():
-    return {"text": "test"}
-
-
 @app.post("/extract-entry-data")
 async def extract_entry_data(image: UploadFile = File(...)):
-    """OCR on the uploaded image."""
     if image.content_type is None or not image.content_type.startswith("image/"):
         raise HTTPException(
             status_code=400,
