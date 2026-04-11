@@ -9,16 +9,50 @@ from typing import Any
 from google import genai
 from google.genai import types
 
-SYSTEM_PROMPT = """You extract structured data from noisy OCR text of a fuel / gas receipt.
-Respond with a single JSON object and nothing else. Use only these keys:
-- "cost": number or null — total amount paid (one number, no currency symbols in the value)
-- "fuel_quantity": number or null — volume of fuel (one number)
-- "cost_currency": string or null — ISO-style currency if inferable (e.g. "HUF", "EUR", "USD")
-- "fuel_unit": string or null — "L" or "gal" or similar if inferable from the text
+SYSTEM_PROMPT = SYSTEM_PROMPT = """You extract structured data from noisy OCR text of a fuel/gas receipt.
+The receipt may be in any language (Hungarian, German, Romanian, Slovak, etc.).
+Respond with a single JSON object and nothing else. No markdown, no backticks, no explanation.
 
-If something cannot be determined from the text, use null. Do not guess or invent amounts."""
+Keys:
+- "cost": number or null — the final total paid. Look for keywords like:
+  "ÖSSZESEN", "OSSZESEN", "TOTAL", "GESAMT", "SUMME", "TOTAAL", "SUMA", "CELKEM", "ИТОГО", "MONTANT"
+  or payment method lines like "BANKKARTYA", "CARD", "KARTE", "CASH", "BARGELD".
+  Use the largest clearly identified final total. Never use subtotals, discounts, or foreign currency conversion lines.
 
+- "fuel_quantity": number or null — volume of fuel pumped. Look for a number near units like
+  "L", "LTR", "LITER", "LITRE", "GAL", "GALLON" or near fuel type words like
+  "BENZIN", "BENZINE", "PETROL", "GASOLINE", "DIESEL", "GAZOLAJ", "NAFTA", "ESSENCE".
+  OCR often garbles decimals — treat both comma and period as possible decimal separators.
+  A space or apostrophe inside a number is a thousands separator, not a decimal: "21 320" = 21320, "21,320" = 21.32.
+  Use context (realistic fuel quantities are 5–120 litres) to pick the correct interpretation.
 
+- "cost_currency": string or null — infer from currency symbols or words:
+  "Ft", "FT", "forint" → "HUF"
+  "€", "EUR" → "EUR" (only if that is the paid currency, not a conversion line)
+  "$" → "USD"
+  "£" → "GBP"
+  "RON", "lei" → "RON"
+  "CZK", "Kč" → "CZK"
+  "PLN", "zł" → "PLN"
+  "CHF" → "CHF"
+  Any other symbol → use the ISO 4217 code if inferrable, else null.
+  Ignore informational currency conversion lines (e.g. "EUROBAN", "ARFOLYAM", "KURS", "RATE").
+
+- "fuel_unit": string or null — "L" for litres, "gal" for gallons. Infer from the text.
+
+OCR noise rules — correct these before parsing:
+- "COO", "C00", "coo" trailing a number = those are zeros: "14 796 COO" → 14796
+- "eC00", "eCOO" = discount marker, ignore
+- "S"/"s" may be misread "5", "O" may be misread "0", "l" may be misread "1", "I" may be "1"
+- Spaces inside numbers are thousands separators: "25 413" = 25413
+- Ignore any line containing conversion keywords: "EUROBAN", "ARFOLYAM", "KURS", "RATE", "EXCHANGE"
+
+Realistic sanity checks:
+- Fuel quantity should be between 1 and 200 litres (or 0.3–50 gallons)
+- Cost should be a plausible fuel purchase amount for the currency
+- If a value fails the sanity check, set it to null rather than returning a garbage value.
+
+If something cannot be determined, use null. Do not guess or invent values."""
 def parse_receipt_ocr(ocr_text: str) -> dict[str, Any]:
     print(ocr_text)
     api_key = (
