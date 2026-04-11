@@ -1,10 +1,8 @@
-"""Image-to-text via Tesseract (same idea as text_extractor_first_try/script.py)."""
-
 from io import BytesIO
 import os
 import shutil
 
-from PIL import Image
+from PIL import Image, ImageOps
 import pytesseract
 
 
@@ -19,11 +17,17 @@ def configure_tesseract() -> None:
         pytesseract.pytesseract.tesseract_cmd = default_windows_path
 
 
+def _prepare(img: Image.Image) -> Image.Image:
+    img = ImageOps.exif_transpose(img)   # fix phone rotation
+    img = img.convert("L")               # grayscale helps Tesseract
+    return img
+
+
 def extract_text_from_path(image_path: str) -> str:
     try:
         configure_tesseract()
-        img = Image.open(image_path)
-        text = pytesseract.image_to_string(img)
+        img = _prepare(Image.open(image_path))
+        text = pytesseract.image_to_string(img, lang="hun+eng")
         return text.strip()
     except Exception as e:
         return f"Error: {e}"
@@ -32,8 +36,8 @@ def extract_text_from_path(image_path: str) -> str:
 def extract_text_from_bytes(image_bytes: bytes) -> str:
     try:
         configure_tesseract()
-        img = Image.open(BytesIO(image_bytes))
-        text = pytesseract.image_to_string(img)
+        img = _prepare(Image.open(BytesIO(image_bytes)))
+        text = pytesseract.image_to_string(img, lang="hun+eng")
         return text.strip()
     except Exception as e:
         return f"Error: {e}"
