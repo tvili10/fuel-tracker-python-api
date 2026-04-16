@@ -72,6 +72,7 @@ async def extract_entry_data(image: UploadFile = File(...)):
             "fuel_quantity": parsed.get("fuel_quantity"),
             "cost_currency": parsed.get("cost_currency"),
             "fuel_unit": parsed.get("fuel_unit"),
+            "receipt_date": parsed.get("receipt_date"),
         },
     }
 

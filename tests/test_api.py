@@ -96,6 +96,7 @@ def test_extract_entry_data_returns_structured_result(monkeypatch):
             "fuel_quantity": 40.3,
             "cost_currency": "HUF",
             "fuel_unit": "L",
+            "receipt_date": "2026-04-12",
             "ignored_extra_key": "value",
         },
     )
@@ -112,5 +113,6 @@ def test_extract_entry_data_returns_structured_result(monkeypatch):
             "fuel_quantity": 40.3,
             "cost_currency": "HUF",
             "fuel_unit": "L",
+            "receipt_date": "2026-04-12",
         }
     }
