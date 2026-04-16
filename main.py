@@ -13,6 +13,7 @@ load_dotenv(_ROOT / ".env")
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.concurrency import run_in_threadpool
 
 from ai_parse import parse_receipt_ocr
 from text_extract import extract_text_from_bytes, extract_text_from_path
@@ -46,6 +47,7 @@ def health():
 
 @app.post("/extract-entry-data")
 async def extract_entry_data(image: UploadFile = File(...)):
+    request_start = time.perf_counter()
     if image.content_type is None or not image.content_type.startswith("image/"):
         raise HTTPException(
             status_code=400,
@@ -55,16 +57,28 @@ async def extract_entry_data(image: UploadFile = File(...)):
     if not data:
         raise HTTPException(status_code=400, detail="Empty file.")
 
-    text = extract_text_from_bytes(data)
+    ocr_start = time.perf_counter()
+    text = await run_in_threadpool(extract_text_from_bytes, data)
+    ocr_ms = (time.perf_counter() - ocr_start) * 1000
     if text.startswith("Error:"):
         raise HTTPException(status_code=422, detail=text)
 
     try:
-        parsed = parse_receipt_ocr(text)
+        ai_start = time.perf_counter()
+        parsed = await run_in_threadpool(parse_receipt_ocr, text)
+        ai_ms = (time.perf_counter() - ai_start) * 1000
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e)) from e
+
+    total_ms = (time.perf_counter() - request_start) * 1000
+    logger.info(
+        "extract-entry-data completed: ocr_ms=%.1f ai_ms=%.1f total_ms=%.1f",
+        ocr_ms,
+        ai_ms,
+        total_ms,
+    )
 
     return {
         "parsed": {
