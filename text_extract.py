@@ -1,4 +1,5 @@
 from io import BytesIO
+from functools import lru_cache
 import os
 import shutil
 
@@ -6,6 +7,7 @@ from PIL import Image, ImageOps
 import pytesseract
 
 
+@lru_cache(maxsize=1)
 def configure_tesseract() -> None:
     tesseract_path = shutil.which("tesseract")
     if tesseract_path:
