@@ -27,6 +27,8 @@ Keys:
   OCR often garbles decimals — treat both comma and period as possible decimal separators.
   A space or apostrophe inside a number is a thousands separator, not a decimal: "21 320" = 21320, "21,320" = 21.32.
   Use context (realistic fuel quantities are 5–120 litres) to pick the correct interpretation.
+  If you see something like "21340" and it's a valid number, it's probably a mistake, set it to 21.34. Apply this rule to all numbers.
+
 
 - "cost_currency": string or null — infer from currency symbols or words:
   "Ft", "FT", "forint" → "HUF"
