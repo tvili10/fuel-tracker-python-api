@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from functools import lru_cache
 from datetime import datetime
 from typing import Any
 
@@ -64,6 +65,19 @@ Realistic sanity checks:
 If something cannot be determined, use null. Do not guess or invent values."""
 
 
+def _compact_ocr_text(text: str, max_lines: int = 80, max_chars: int = 3500) -> str:
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if len(lines) > max_lines:
+        lines = lines[:max_lines]
+    compacted = "\n".join(lines)
+    return compacted[:max_chars]
+
+
+@lru_cache(maxsize=1)
+def _get_genai_client(api_key: str) -> genai.Client:
+    return genai.Client(api_key=api_key)
+
+
 def _normalize_receipt_date(value: Any) -> str | None:
     if value is None:
         return None
@@ -115,18 +129,19 @@ def parse_receipt_ocr(ocr_text: str) -> dict[str, Any]:
             "Set GOOGLE_API_KEY (or GEMINI_API_KEY) from Google AI Studio to enable parsing."
         )
 
-    model_name = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash").strip()
+    model_name = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash-lite").strip()
 
-    prompt = f"{SYSTEM_PROMPT}\n\nOCR text:\n\n{ocr_text}"
-    with genai.Client(api_key=api_key) as client:
-        response = client.models.generate_content(
-            model=model_name,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0,
-            ),
-        )
+    compacted_ocr_text = _compact_ocr_text(ocr_text)
+    prompt = f"{SYSTEM_PROMPT}\n\nOCR text:\n\n{compacted_ocr_text}"
+    client = _get_genai_client(api_key)
+    response = client.models.generate_content(
+        model=model_name,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            temperature=0,
+        ),
+    )
     raw = (response.text or "").strip()
     if not raw:
         raise ValueError("Empty model response")

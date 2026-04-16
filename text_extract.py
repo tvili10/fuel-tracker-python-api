@@ -21,6 +21,9 @@ def configure_tesseract() -> None:
 
 def _prepare(img: Image.Image) -> Image.Image:
     img = ImageOps.exif_transpose(img)   # fix phone rotation
+    max_side = 1800
+    if max(img.size) > max_side:
+        img.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
     img = img.convert("L")               # grayscale helps Tesseract
     return img
 
@@ -29,7 +32,11 @@ def extract_text_from_path(image_path: str) -> str:
     try:
         configure_tesseract()
         img = _prepare(Image.open(image_path))
-        text = pytesseract.image_to_string(img, lang="hun+eng")
+        text = pytesseract.image_to_string(
+            img,
+            lang="hun+eng",
+            config="--oem 1 --psm 6",
+        )
         return text.strip()
     except Exception as e:
         return f"Error: {e}"
@@ -39,7 +46,11 @@ def extract_text_from_bytes(image_bytes: bytes) -> str:
     try:
         configure_tesseract()
         img = _prepare(Image.open(BytesIO(image_bytes)))
-        text = pytesseract.image_to_string(img, lang="hun+eng")
+        text = pytesseract.image_to_string(
+            img,
+            lang="hun+eng",
+            config="--oem 1 --psm 6",
+        )
         return text.strip()
     except Exception as e:
         return f"Error: {e}"
