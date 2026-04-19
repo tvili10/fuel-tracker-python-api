@@ -30,7 +30,7 @@ def extract_text_from_path(image_path: str) -> str:
         text = pytesseract.image_to_string(img, lang="hun+eng")
         return text.strip()
     except Exception as e:
-        return f"Error: {e}"
+        return f"Error: {e}" 
 
 
 def extract_text_from_bytes(image_bytes: bytes) -> str:
