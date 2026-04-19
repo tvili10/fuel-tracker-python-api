@@ -63,7 +63,7 @@ def extract_text_from_path(image_path: str) -> str:
         text = _extract_text(img)
         return text.strip()
     except Exception as e:
-        return f"Error: {e}"
+        return f"Error: {e}" 
 
 
 def extract_text_from_bytes(image_bytes: bytes) -> str:
