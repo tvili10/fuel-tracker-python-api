@@ -20,7 +20,7 @@ def configure_tesseract() -> None:
 
 
 def _ocr_settings() -> tuple[str, str]:
-    lang = os.environ.get("OCR_LANG", "hun+eng").strip() or "hun+eng"
+    lang = "eng"
     tesseract_config = (
         os.environ.get(
             "OCR_TESSERACT_CONFIG",
