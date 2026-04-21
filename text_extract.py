@@ -19,7 +19,7 @@ def configure_tesseract() -> None:
         pytesseract.pytesseract.tesseract_cmd = default_windows_path
 
 
-def _ocr_settings() -> tuple[str, str, int]:
+def _ocr_settings() -> tuple[str, str]:
     lang = os.environ.get("OCR_LANG", "hun+eng").strip() or "hun+eng"
     tesseract_config = (
         os.environ.get(
@@ -28,19 +28,12 @@ def _ocr_settings() -> tuple[str, str, int]:
         ).strip()
         or "--oem 1 --psm 6 -c load_system_dawg=0 -c load_freq_dawg=0"
     )
-    raw_max_side = (os.environ.get("OCR_MAX_SIDE", "1400") or "1400").strip()
-    try:
-        max_side = int(raw_max_side)
-    except ValueError:
-        max_side = 1400
-    # Keep usable bounds even if env is set badly.
-    max_side = max(800, min(max_side, 2600))
-    return lang, tesseract_config, max_side
+    return lang, tesseract_config
 
 
 def _prepare(img: Image.Image) -> Image.Image:
     img = ImageOps.exif_transpose(img)   # fix phone rotation
-    _, _, max_side = _ocr_settings()
+    max_side = 1200
     if max(img.size) > max_side:
         img.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
     img = img.convert("L")               # grayscale helps Tesseract
@@ -48,7 +41,7 @@ def _prepare(img: Image.Image) -> Image.Image:
 
 
 def _extract_text(img: Image.Image) -> str:
-    lang, tesseract_config, _ = _ocr_settings()
+    lang, tesseract_config = _ocr_settings()
     return pytesseract.image_to_string(
         img,
         lang=lang,

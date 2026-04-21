@@ -26,7 +26,6 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Fuel Tracker API")
 
-# Lets a separate local dev UI (other port) call this API from the browser.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
